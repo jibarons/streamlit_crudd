@@ -2,7 +2,6 @@
 # deploy: https://share.streamlit.io/
 # https://jibarons-ict-survey-app-zy2akr.streamlit.app/?embedded=true
 
-import getpass
 from datetime import date
 #from sqlalchemy.engine import result, URL
 import sqlalchemy as sa
@@ -13,6 +12,8 @@ import numpy as np  # np mean, np random
 import pandas as pd  # read csv, df manipulation
 import plotly.express as px  # interactive charts
 import streamlit as st  # data web app development
+from psycopg2.extensions import register_adapter, adapt
+
 
 
 st.set_page_config(
@@ -26,7 +27,6 @@ st.set_page_config(
 
 
 pwd = st.text_input("Enter server password", type="password")
-#pwd = getpass.getpass()
 
 if pwd:
 
@@ -48,7 +48,7 @@ if pwd:
   meta = sa.MetaData(bind=engine)
   sa.MetaData.reflect(meta)
 
-  @st.cache_data
+  #@st.cache_data
   def get_data(table)-> pd.DataFrame:
       return pd.read_sql_query('SELECT * FROM public.' + table, con=engine)
 
@@ -56,7 +56,15 @@ if pwd:
       df_oppo_entry.to_sql('opportunity',  engine, if_exists='append', index = False)    
 
   def update_entry(table, data_dict):
-      tbl_oppo = sa.meta.tables[table]
+      # df_oppo_entry.to_sql('opportunity',  engine, if_exists='replace', index = False)
+      # sql = """
+      #     UPDATE opportunity AS f
+      #     SET col1 = t.col1
+      #     FROM temp_table AS t
+      #     WHERE f.id = t.id
+      # """
+      # result = engine.execute(sql).fetchall()
+      tbl_oppo = meta.tables[table]
       # update
       u = sa.update(tbl_oppo)
       u = u.values(data_dict)
@@ -64,7 +72,7 @@ if pwd:
       engine.execute(u)
       # write the SQL query inside the
       # text() block to fetch all records
-      sql = text('SELECT * from ' + table)
+      sql = sa.text('SELECT * from ' + table)
       # Fetch all the records
       result = engine.execute(sql).fetchall()
 
@@ -80,11 +88,6 @@ if pwd:
 
   # df.info()
   df_oppo = get_data('opportunity')
-
-
-
-  df_wide_id = df_wide['init_name']
-
 
   # dashboard title
   st.title("Data-Tech SOMETHING something")
@@ -147,17 +150,17 @@ if pwd:
               submitted = st.form_submit_button("Submit")
 
               # Add assessment inputs to table
-              # Create Opportunity data frame wfor stora of input values
+              # Create Opportunity data frame for storage of input values
               today = date.today()
               oppo_entry = {
+                  #'id': list(idx)[0],
                   'oppo_date': today.isoformat(),
                   'init_name': initiative_filter,
                   'oppo_feed': team_feed,
-                  'init_id': df_wide['init_id'][0],
-                  'init_uuid': df_wide['init_uuid'][0],
-                  'init_formid': df_wide['init_formid'][0]
-              }
-              
+                  'init_id': list(df_wide.loc[idx]['init_id'].astype('string'))[0],
+                  'init_uuid': list(df_wide.loc[idx]['init_uuid'].astype('string'))[0],
+                  'init_formid': list(df_wide.loc[idx]['init_formid'].astype('string'))[0]
+              }              
 
               if submitted:
                   if any(initiative_filter == df_oppo['init_name']):
@@ -170,6 +173,7 @@ if pwd:
                     add_entry()
                     df_oppo = get_data('opportunity')
                     st.write("Entry added")
+
 
           st.write("Outside the form")
           st.write(len(df_oppo)-1)
@@ -194,8 +198,6 @@ if pwd:
           
           # if badd_entry:
           #   add_entry()
-
-
 
           # if team_feed:
           #     st.write("You entered: ", team_feed)
