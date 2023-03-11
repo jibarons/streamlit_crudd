@@ -1,0 +1,7 @@
+
+streamlit==1.17.0
+pandas==1.4.1
+numpy==1.22.2
+plotly==5.10.0
+plotly-express==0.4.1
+xlrd==2.0.1
